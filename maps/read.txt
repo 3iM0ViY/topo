@@ -1,0 +1,5 @@
+In this folder lie the Esri ASCII (.asc) files, which are however not mine 
+and too large to upload, so here's the txt instead.
+
+Here's the link to the published NASA collection
+https://srtm.csi.cgiar.org/srtmdata/
