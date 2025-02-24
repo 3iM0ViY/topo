@@ -107,3 +107,10 @@ topo/
     requirements.txt
     readme.txt
 ```
+
+# Ілюстрації
+![зображення_2025-02-24_130328266](https://github.com/user-attachments/assets/ee3a0248-4dcc-4f88-aa98-8b6312c0cec9)
+<img src="https://github.com/user-attachments/assets/b0731ab4-d0f9-4803-8630-712812a0d256" height="350" >
+<img src="https://github.com/user-attachments/assets/8a221e8d-b466-4471-8319-48f9fbcd6660" height="350">
+
+
