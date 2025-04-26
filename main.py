@@ -828,26 +828,33 @@ class MapArea(QWidget):
         range_end = range_start + int(settings["Кут (°)"])  # Автоматично визначений крайній кут сегмента
         
         # Змінна результатів
-        # coverage_grid = []
         azimuths = list(range(range_start, range_end, step_azimuth))
         coverage_grid = []
-    
+
+        ### Паралельний розрахунок для кожного азимута ###
         # Використання ThreadPoolExecutor або ProcessPoolExecutor для паралельного обчислення
-        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-            futures = {
-                executor.submit(
-                    self.maths_for_line, lon_start, lat_start, height_data, header, azimuth, settings
-                ) for azimuth in azimuths
-            }
+        # with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+        #     futures = {
+        #         executor.submit(
+        #             self.maths_for_line, lon_start, lat_start, height_data, header, azimuth, settings
+        #         ) for azimuth in azimuths
+        #     }
             
-            for future in futures:
-                result = future.result()
-                if result:  # Пропуск None
-                    # print(result)
-                    coverage_grid.append(result)
-                    # coverage_grid.append({"azimuth": azimuth, "distances": distances, "losses_db": losses_output})
+        #     for future in futures:
+        #         result = future.result()
+        #         if result:  # Пропуск None
+        #             # print(result)
+        #             coverage_grid.append(result)
+        #             # coverage_grid.append({"azimuth": azimuth, "distances": distances, "losses_db": losses_output})
 
         # print(coverage_grid)
+
+        ### Послідовний розрахунок для кожного азимута ###
+        for azimuth in azimuths:
+            result = self.maths_for_line(lon_start, lat_start, height_data, header, azimuth, settings)
+            if result:  # Пропуск None
+                coverage_grid.append(result)
+
         return coverage_grid
 
     def maths_for_line(self, lon_start, lat_start, height_data, header, azimuth, settings):
@@ -897,7 +904,8 @@ class MapArea(QWidget):
             lon_end, lat_end = self.adjust_to_map_boundary(lat_start, lon_start, lon_end, lat_end, )
             print(f"Змінено! Кінцева широта, довгота: {lat_end}, {lon_end}")
 
-        # Отримання висоти місцевості в кінцевій точці
+        # Отримання висоти місцевості в початковій та кінцевій точках
+        startpoint_height = maths.get_height_for_coordinates(lon_start, lat_start, height_data, header)
         endpoint_height = maths.get_height_for_coordinates(lon_end, lat_end, height_data, header)
 
         # Розрахунок реальної відстані між двома точками за допомогою формули Хаверсінуса
@@ -925,12 +933,12 @@ class MapArea(QWidget):
         smooth_graph_distances = np.linspace(distances.min(), distances.max(), smooth_graph_points)
         smooth_graph_terrain_heights = spl(smooth_graph_distances)
 
-        # Перераховуємо LOS тільки для побудови графіка
+        # Обчислення лінії LOS з урахуванням висот антен
         smooth_los_heights = maths.calculate_los_with_antenna(
             smooth_graph_distances,
             smooth_graph_terrain_heights,
-            tx_height,
-            rx_height
+            startpoint_height + tx_height,
+            endpoint_height + rx_height
         )
 
         # Розрахунок сумарних втрат
@@ -947,21 +955,21 @@ class MapArea(QWidget):
         # print(f"Final Total Loss (Longley-Rice, propob_loc, Difr): {total_loss:.2f} dB")
 
         # Виведення таблиці з результатами
-        # print("\nТочка    Відстань (м)    Висота рельєфу (м)  Висота LOS (м)  Радіус Френеля (м)      Втрати (м)      Втрати (дБ)")
+        print("\nТочка    Відстань (м)    Висота рельєфу (м)  Висота LOS (м)  Радіус Френеля (м)      Втрати (м)      Втрати (дБ)")
 
-        # losses_output = []
+        losses_output = []
 
-        # for i in range(0, len(smooth_distances), 2):  # Виводимо для всіх точок
-        #     losses_at_i = \
-        #     maths.calculate_integrated_losses(smooth_distances, smooth_terrain_heights, smooth_los_heights, d_total, lambda_wave)[i]
-        #     losses_db_at_i = 10 * math.log10(losses_at_i) if losses_at_i > 1 else 0
-        #     fresnel_r_at_i = maths.fresnel_radius(smooth_distances[i], d_total, lambda_wave)
-        #     losses_output.append(losses_db_at_i)
+        for i in range(0, len(smooth_distances), 2):  # Виводимо для всіх точок
+            losses_at_i = \
+            maths.calculate_integrated_losses(smooth_distances, smooth_terrain_heights, smooth_los_heights, d_total, lambda_wave)[i]
+            losses_db_at_i = 10 * math.log10(losses_at_i) if losses_at_i > 1 else 0
+            fresnel_r_at_i = maths.fresnel_radius(smooth_distances[i], d_total, lambda_wave)
+            losses_output.append(losses_db_at_i)
 
-            # print(
-            #     f"{i + 1:<10}{smooth_distances[i]:<20.2f}{smooth_terrain_heights[i]:<20.2f}{smooth_los_heights[i]:<20.2f}"
-            #     f"{fresnel_r_at_i:<20.2f}{losses_at_i:<20.2f}{losses_db_at_i:<20.2f}"
-            # )
+            print(
+                f"{i + 1:<10}{smooth_distances[i]:<20.2f}{smooth_terrain_heights[i]:<20.2f}{smooth_los_heights[i]:<20.2f}"
+                f"{fresnel_r_at_i:<20.2f}{losses_at_i:<20.2f}{losses_db_at_i:<20.2f}"
+            )
 
         # Можливість побудови графіка для останнього відрізка 
         # maths.plot_updated_smooth_terrain(
