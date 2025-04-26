@@ -573,14 +573,29 @@ class MapArea(QWidget):
         :param event: Опис взаємодії користувача з графіком matplotlib.
         """
         if event.inaxes == self.ax and event.xdata is not None and event.ydata is not None:
-            lon, lat = event.xdata, event.ydata # Отримати індекси матриці з координат ділянки
-            
-            # Оновлення статусбару
+            lon, lat = event.xdata, event.ydata # координати ділянки
+
+            # Отримати індекси матриці з координат 
+            x_index = int((lon - self.header['xllcorner']) / self.header['cellsize'])
+            y_index = int((self.header['yllcorner'] - lat) / self.header['cellsize'])
+
+            # Висота поверхні в точці наведення
+            surface_height = self.data[y_index, x_index]
+
+            # Висота передавача з налаштувань
+            current_tab_index = self.tabWidget.currentIndex()
+            current_tab_name = self.tabWidget.tabText(current_tab_index)
+            transmitter_height_settings = self.tabManager.get_tab_settings(current_tab_name)["sliders"]["Висота передавача (m)"]
+            transmitter_height = surface_height + transmitter_height_settings
+
+            # Статус бар
             if self.parent.statusbar:
-                mgrs = latlon_to_mgrs(lat, lon)
+                mgrs = latlon_to_mgrs(lat, lon)  # Конвертація в MGRS
                 self.parent.statusbar.showMessage(
-                        f"Довгота: {lon:.5f}, Паралель: {lat:.5f} || MGRS: {mgrs}"
-                    )
+                    f"Довгота: {lon:.5f}, Паралель: {lat:.5f} || MGRS: {mgrs} || "
+                    f"Висота поверхні: {surface_height:.2f} м || "
+                    f"Висота передавача: {transmitter_height:.2f} м"
+                )
 
     def plot_asc(self, data, downsample_factor):
         """
