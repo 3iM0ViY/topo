@@ -388,6 +388,10 @@ class Ui_MainWindow(object):
         labels_text.append(f"Площа покриття: {coverage_area:.2f} km²")
 
         for key, value in tab_settings['sliders'].items():
+            if key == "Висота передавача (m)":
+                height_there = maths.get_height_for_coordinates(lon, lat, self.map_area.data, self.map_area.header)
+                labels_text.append(f"Альтитуда передавача (м): {value + height_there}")
+                continue
             labels_text.append(f"{key}: {value}")
         # labels_text.append(f"Тип місцевості: {tab_settings['comboBox1']}")
         # labels_text.append(f"Зона: {tab_settings['comboBox2']}")
@@ -594,7 +598,7 @@ class MapArea(QWidget):
                 self.parent.statusbar.showMessage(
                     f"Довгота: {lon:.5f}, Паралель: {lat:.5f} || MGRS: {mgrs} || "
                     f"Висота поверхні: {surface_height:.2f} м || "
-                    f"Висота передавача: {transmitter_height:.2f} м"
+                    f"Висота передавача (абсолютна): {transmitter_height:.2f} м"
                 )
 
     def plot_asc(self, data, downsample_factor):
@@ -906,7 +910,12 @@ class MapArea(QWidget):
 
         # Отримання висоти місцевості в початковій та кінцевій точках
         startpoint_height = maths.get_height_for_coordinates(lon_start, lat_start, height_data, header)
+        print(startpoint_height)
         endpoint_height = maths.get_height_for_coordinates(lon_end, lat_end, height_data, header)
+
+        # Висота антен над рельєфом
+        tx_height = tx_height + startpoint_height
+        rx_height = rx_height + endpoint_height
 
         # Розрахунок реальної відстані між двома точками за допомогою формули Хаверсінуса
         d_total = maths.haversine_distance(lon_start, lat_start, lon_end, lat_end)
@@ -937,8 +946,8 @@ class MapArea(QWidget):
         smooth_los_heights = maths.calculate_los_with_antenna(
             smooth_graph_distances,
             smooth_graph_terrain_heights,
-            startpoint_height + tx_height,
-            endpoint_height + rx_height
+            tx_height,  
+            rx_height
         )
 
         # Розрахунок сумарних втрат
